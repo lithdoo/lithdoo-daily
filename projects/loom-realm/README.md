@@ -4,40 +4,57 @@ LoomRealm 是一个 platform-neutral logical Subsystem runtime architecture；Ga
 
 ## Current
 
-- Status: **M7 Renderer Control — Architecture Frozen / Implemented / Qualified / Closed**
+- Status: **M8 Renderer Data Profile + Data Connection Core — Architecture Frozen / Implemented / Qualified / Closed**
 - Source: https://github.com/lithdoo/loom-realm
-- Current `main` review-closure head: `68cf6534270d637b776594259b4d36d379af721e`
-- M7 baseline implementation: `016721bfed31f7d64b902619ebf533fd6b03a382`
-- M7 clean-run qualification baseline: `72e435d38498afc8370249c44daa925145d89594`
-- Formal Renderer Control contract: https://github.com/lithdoo/loom-realm/blob/main/doc/15-contracts/main-renderer-control-v1.md
-- Qualification record: https://github.com/lithdoo/loom-realm/blob/main/doc/30-implementation/m7-qualification.md
-- Next capability milestone: **M8 DataAuthority / Data Connection Core**
+- Current `main` review-closure head: `b1b0ca7ccc5951c3bbc2410b7cbb0fea3aa2e9ff`
+- M8 implementation commit: `356a60d2e86c2f51761f2869d4e8208be9502768`
+- M8 qualification record: https://github.com/lithdoo/loom-realm/blob/main/doc/30-implementation/m8-qualification.md
+- Formal Data Connection contract: https://github.com/lithdoo/loom-realm/blob/main/doc/15-contracts/renderer-subsystem-data-connection-v1.md
+- Formal Renderer Data Profile: https://github.com/lithdoo/loom-realm/blob/main/doc/15-contracts/renderer-data-profile-v1.md
+- Next capability milestone: **M9 Desktop DataConnectionBroker**
 
-M6 Hostra Runtime remains the qualified physical Runtime baseline underneath M7; M7 does not yet add a physical Desktop/PWA Renderer transport.
+M6 Hostra Runtime remains the qualified physical Runtime baseline; M7 Renderer Control remains the qualified logical authority-mirror parent of the new M8 Data role slice.
+
+M8 does not yet add a production Desktop/PWA Data Broker, User Input business state, Render business state or Content.
 
 ## Current architecture
 
-The current stable path is:
+The current stable path through M8 is:
 
 ```text
 Game / Platform PREPARE
 → LogicalGameBootstrap
 → Main single authority
    ├─ Runtime / Frame / Activation / InputTarget
-   ├─ Session-local Renderer authority revision
-   └─ current Renderer participant
+   ├─ Session-local Renderer authority revision/current participant
+   └─ ready-derived DataAuthority
+        Runtime != ready → none
+        Runtime = ready  → S/1/loomrealm.renderer-data/1
+                │
+                ↓ pure committed full-Snapshot projection
+        @loomrealm/renderer-control
+                │
+                ↓
+        @loomrealm/renderer
+                ├─ Control-mirror {peer, snapshot} | null
+                └─ per-subsystem Data slot
+                     │
+                     ↓ RendererDataBinding
+                RendererDataPeer
+
+Subsystem Runtime ready
         │
-        ↓ pure committed full-Snapshot projection
-@loomrealm/renderer-control
+        ↓ SubsystemDataBinding
+SubsystemDataPeer
+
+RendererDataPeer ⇄ paired current carrier ⇄ SubsystemDataPeer
         │
-        ↓ platform-neutral MessageCarrier
-@loomrealm/renderer
-        └─ local {peer, snapshot} | null mirror
+        └─ @loomrealm/data connection-local profile mechanics
 ```
 
-For M7 qualification the Renderer Control carrier is exercised through the production-shaped optional `RendererControlBinding` and Foundation `MemoryCarrier`.
+M8 qualification uses a deterministic production-shaped paired `MemoryCarrier` seam for the role-facing Data Bindings.
 
-Real physical Hostra Renderer WebSocket integration remains M14; PWA MessagePort/Data/Content physical composition remains M16.
+The fixture proves the real Main → Renderer Control → role reconciliation → real Data peer path, but it does not pretend to prove M9 physical authority feed or commit-time Broker revalidation.
 
 ## M6 physical baseline
 
@@ -56,13 +73,13 @@ Hostra Game installation
 → bounded physical termination
 ```
 
-M7's `OpaqueMaterialGenerator` migration mechanically updates MainPlatform providers without requiring Hostra to implement a fake Renderer capability.
+Later M7/M8 logical capabilities do not require the M6 Runtime-only composition to implement fake Renderer or Data capabilities.
 
-## M7 stable boundaries
+## M7 Renderer Control baseline
 
-### Main owns authority
+M7 remains the stable parent authority transport for M8.
 
-Main remains the sole owner of:
+Main owns:
 
 ```text
 Session identity
@@ -73,21 +90,15 @@ InputTarget
 Renderer AuthorityRevision
 current Renderer participant
 Renderer token authority
-future DataAuthority policy
 ```
 
-No Renderer Runtime/Frame shadow registry is introduced.
-
-### `@loomrealm/renderer-control` owns protocol mechanics only
-
-It owns:
+`@loomrealm/renderer-control` owns only protocol mechanics:
 
 ```text
-Renderer Control v1 model/profile
 renderer.hello
 renderer.state
 version negotiation
-closed validation
+closed Snapshot validation
 connection-local session/revision checks
 hello-before-state ordering
 exact outbound preflight
@@ -95,120 +106,289 @@ terminal/retirement mechanics
 0..1 in-flight + 0..1 pendingLatest publication
 ```
 
-It does not own Main authority or physical Renderer hosting.
+Renderer Control failure or representation failure does not roll back Main Runtime/Frame authority.
 
-### `@loomrealm/renderer` stays minimal
+The M7 stable decision remains:
 
-M7 Renderer state is exactly:
+- [M7 Renderer Control boundary](./decisions/m7-renderer-control-boundary.md)
+
+## M8 stable boundaries
+
+### Main DataAuthority is a pure ready-derived fact
+
+M8 adds no independent Data authority registry.
+
+Current Phase 1 authority is exactly:
 
 ```text
-{ peer, RendererAuthoritySnapshotV1 } | null
+Runtime != ready
+→ no DataAuthority
+
+Runtime = ready
+→ {
+     subsystemKey: S,
+     generation: 1,
+     dataProfile: "loomrealm.renderer-data/1"
+   }
 ```
 
-No Store framework, reducer, EventEmitter, selector graph, heartbeat, lease or Renderer epoch exists.
+The Runtime transition and DataAuthority add/remove are one Renderer-visible committed state transition.
 
-### Platform ingress is narrow and optional
+The current slice deliberately does not prebuild:
 
-M7 freezes:
+```text
+generationHighWater Map
+generation allocator
+generation history
+exhaustion handling
+DataAuthorityManager
+fake same-key Runtime replacement path
+```
+
+The formal Data Connection contract still requires any future second authority epoch for the same `(Session, subsystemKey)` to use a strictly higher generation when such a transition becomes real.
+
+Same-generation carrier reconnect and Renderer replacement do not create a new Main authority epoch.
+
+### Platform Data seams are narrow
+
+M8 freezes:
 
 ```ts
-interface OpaqueMaterialGenerator {
-  generate(): string;
+interface RendererDataBinding {
+  acquire(
+    subsystemKey: string,
+    generation: number,
+    dataProfile: string,
+    signal: AbortSignal,
+  ): Promise<MessageCarrier>;
 }
 
-interface RendererControlBinding {
-  acquire(token: string, signal: AbortSignal): Promise<MessageCarrier>;
+interface SubsystemDataBindingResult {
+  readonly carrier: MessageCarrier;
+  readonly generation: number;
+  readonly dataProfile: string;
+}
+
+interface SubsystemDataBinding {
+  acquire(signal: AbortSignal): Promise<SubsystemDataBindingResult>;
 }
 ```
 
-`RendererControlBinding.acquire()` arms/waits for one next candidate carrier; it does not create a Renderer, authenticate tokens, negotiate the protocol, retry or decide currentness.
-
-`rendererControl` is optional on `MainPlatform`.
-
-## M7 concurrency / failure closure
-
-Stable invariants:
+The Bindings do not expose:
 
 ```text
-hello Snapshot preflight occurs before current switch
-new successful Renderer actively revokes old Main-side currentness
-old peer starts no new post-retirement publication
-already in-flight old bytes have no authority effect
-Session terminal retires current Renderer and aborts pending candidate
+endpoint / URL / port
+ticket / nonce / credential
+WebSocket / MessagePort
+candidate state
+Broker handle
+PID / Worker identity
 ```
 
-Renderer representation limits do not become Main business topology limits.
+They also do not own Main authority or role-local peer lifecycle.
 
-If a committed Snapshot cannot be represented:
+`@loomrealm/platform-ports` remains Foundation-only at runtime.
+
+### M8 role seam starts after Platform pairing
+
+M8 qualifies only:
 
 ```text
-Renderer Control fails closed
-Main Runtime/Frame authority remains committed
+one Platform current-deliverable logical pair
+→ Renderer carrier endpoint
++ Subsystem carrier endpoint
 ```
 
-A bad replacement candidate cannot evict a healthy current Renderer.
-
-## M7 qualification baseline
-
-Qualification includes:
+M8 does not claim qualification for:
 
 ```text
-Renderer hello / initial Snapshot
-revision monotonicity
-bounded latest-snapshot publication
-candidate-slot rules
-active replacement + stale-peer identity safety
-Session terminal
-root active projection
-frame.call → suspended caller / active child
-frame.return → fresh caller Activation
-Runtime failure → fixed-point unwind
-initial/current representation isolation
-exact 1 MiB profile boundary
-JSON depth/member boundaries
-M1–M6 regression
-Hostra Runtime-only regression
+how Platform obtains Main-authoritative S/G/P
+candidate authentication/provisioning
+commit-time Session validation
+commit-time current Renderer validation
+commit-time current Runtime validation
+commit-time current DataAuthority validation
+serialized candidate winner/cutover
 ```
 
-The clean-run M7 baseline triggered 14 push workflows and all completed successfully. The subsequent review-closure commit `68cf653...` also passed all workflows affected by the closure changes, including Renderer Control, Renderer, Main, Hostra regression and Documentation.
+Those are M9 DataConnectionBroker concerns.
+
+### Subsystem Data state stays bounded
+
+One Runtime host keeps only:
+
+```text
+0..1 current SubsystemDataPeer
+0..1 pending acquire
+host-lifetime acquisition-stopped fact
+```
+
+Data acquisition is optional and non-blocking.
+
+A pending acquire never blocks Runtime Control or Frame handling.
+
+A surfaced non-abort acquire rejection stops future acquisition for that host lifetime without failing Runtime or unwinding Frames.
+
+Late resolved carriers are installed only after host/currentness recheck; stale results are best-effort closed.
+
+### Renderer Data state stays per subsystem
+
+Renderer construction has exactly one optional typed Data seam:
+
+```text
+createRendererControlHolder(data?)
+```
+
+Per subsystem, Data reconciliation keeps only:
+
+```text
+0..1 current RendererDataPeer
+0..1 pending acquire
+0..1 failed desired identity
+```
+
+Desired identity is:
+
+```text
+current Control peer + exact S/G/P
+```
+
+A surfaced rejection suppresses immediate retry only for that identity. It does not terminalize unrelated subsystem slots or Renderer Control.
+
+Control peer replacement or exact authority replacement makes the old failure identity obsolete.
+
+Renderer Control drives Data desired state, but Data provisioning never backpressures later Control Snapshots.
+
+### Data transport loss does not mutate Main authority
+
+Stable failure split:
+
+```text
+Data carrier loss
+same-generation fresh reconnect
+physical provisioning failure
+```
+
+are Data-plane facts.
+
+They do not by themselves:
+
+```text
+fail Runtime
+unwind Frame
+change Main DataAuthority
+advance Renderer revision
+```
+
+A fresh carrier under the same current S/G/P creates a fresh Data peer with no replay or migrated application state.
+
+### `@loomrealm/data` stays connection-local
+
+M8 uses the real `@loomrealm/data` peers for both roles.
+
+The package owns:
+
+```text
+one carrier reader
+JSON text parse
+Renderer Data Profile demux
+serialized writer
+terminal first-wins
+role direction
+```
+
+M8 does not add InputManager, RenderManager, Render Store or other M10/M11 business abstractions.
+
+## M8 qualification baseline
+
+Qualification covers:
+
+```text
+Main ready/non-ready DataAuthority projection
+fixed generation 1 / fixed profile
+single visible commit for Runtime + DataAuthority consequence
+deterministic projection with no authority semantics in array ordering
+Renderer Control propagation
+Data loss/reconnect leaves Main authority/revision unchanged
+exact Platform Binding root API
+Foundation-only platform-ports dependency
+Subsystem optional/non-blocking acquisition
+Subsystem stale-result and terminal identity safety
+Renderer construction-time optional Data seam
+Renderer Snapshot-driven non-blocking reconciliation
+per-subsystem acquisition rejection isolation
+Control replacement cleanup
+same-generation fresh peer recovery
+real @loomrealm/data peers on both roles
+clean Hostra regression dependency closure
+throwing carrier-close getter cleanup isolation
+```
+
+Implementation:
+
+```text
+356a60d2e86c2f51761f2869d4e8208be9502768
+feat: complete M8 renderer data integration
+```
+
+Final qualification/review closure:
+
+```text
+b1b0ca7ccc5951c3bbc2410b7cbb0fea3aa2e9ff
+fix: close M8 qualification gaps
+```
+
+The final head triggered 14 push workflows and all completed successfully.
+
+No architecture blocker, owner drift or speculative abstraction remained in the final review.
 
 ## Important decisions
 
 - [M6 Hostra launcher / RuntimeHosting boundary](./decisions/m6-hostra-launcher-runtime-boundary.md)
 - [M7 Renderer Control boundary](./decisions/m7-renderer-control-boundary.md)
+- [M8 Renderer Data / Data Connection boundary](./decisions/m8-renderer-data-boundary.md)
 
 ## Reviews
 
 - [M6 Hostra launcher qualified baseline review](./reviews/m6-hostra-launcher-qualified-baseline.md)
 - [M7 Renderer Control qualified baseline review](./reviews/m7-renderer-control-qualified-baseline.md)
+- [M8 Renderer Data qualified baseline review](./reviews/m8-renderer-data-qualified-baseline.md)
 
 ## Evolution rule
 
-M6 and M7 are both good stopping points.
+M6, M7 and M8 are all good stopping points and should not be reopened merely for structural uniformity.
 
-Do not reopen them merely for structural uniformity or future-looking reuse.
-
-For M7 specifically, do not add without a real consumer:
+For the M8 Data path, do not add without a real current requirement:
 
 ```text
-GenericRpcPeer
-UniversalProtocolSession
-RequestManager / PendingRequestMap
-Publisher / StateReplicator framework
-Renderer Runtime/Frame registries
-RendererAuthorityManager
-Store / Observer framework
-ConnectionRegistry
-RendererPlatform mega-interface
-TokenRegistry
-RetryManager
-currentness heartbeat / lease / epoch
+DataAuthorityManager
+speculative GenerationAllocator
+DataConnectionRegistry
+GenericDataBinding
+UniversalConnection
+public M8 DataConnectionBroker interface
+ReconnectManager / RetryScheduler
+BindingError hierarchy
+RendererPlatform / RendererServices mega-interface
+Data Store / ObserverHub / EventBus
+InputManager / RenderManager placeholders
+transport endpoint/ticket DTOs in role packages
+replay/resume cursor
+heartbeat / lease / Data currentness protocol
 ```
 
-The next work should enter M8 DataAuthority / Data Connection Core while preserving the established boundary:
+The next work should enter M9 behind the already-frozen M8 role seams:
 
 ```text
-Control mirrors logical Main authority
-Data owns data-plane provisioning/connection semantics
-physical Desktop/PWA realization stays in later platform milestones
+Main logical DataAuthority
+        ↓
+M9 Desktop DataConnectionBroker
+    physical authority feed
+    candidate/provisioning
+    commit-time Main currentness revalidation
+    serialized paired installation/cutover
+        ↓
+existing RendererDataBinding / SubsystemDataBinding
 ```
+
+M9 should not redefine M8 DataAuthority ownership or widen the role-facing Binding surface unless a concrete physical implementation proves that the frozen seam is insufficient.
