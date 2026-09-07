@@ -6,9 +6,10 @@ LoomRealm 是一个 platform-neutral logical Subsystem runtime architecture；Ga
 
 - Status: **M11 Render Update — Architecture Frozen / Implemented / Qualified / Closed**
 - Source: https://github.com/lithdoo/loom-realm
-- Current closure head: `14bf414022a109174e6caed26f5e260dd59dffd9`
+- Current closure head: `5427187111ae0b3929a9b66b207a2779ef89572c`
 - M10 qualification: https://github.com/lithdoo/loom-realm/blob/main/doc/30-implementation/m10-qualification.md
 - M11 qualification: https://github.com/lithdoo/loom-realm/blob/main/doc/30-implementation/m11-qualification.md
+- M11 final closure review: https://github.com/lithdoo/loom-realm/blob/main/doc/30-implementation/m11-final-closure-review.md
 - Next capability milestone: **M12 Content**
 
 当前连续 qualified baseline：
@@ -175,15 +176,30 @@ Sender v1 刻意使用 Frozen protocol 允许的 full-Snapshot fallback，不制
 
 same-generation Data reconnect 时 business Domain 可继续存在，但旧 carrier publication/old Event history 不继承；fresh carrier 重新 Registry/Snapshot baseline。
 
+最终 requalification 进一步关闭了 representation validation、fail-closed normative catalog、role-specific evidence identity、hard-limit matrix 与 reconnect/Runtime/Frame 的真实 production-seam 证据，不改变 Frozen Render authority / protocol / lifecycle。
+
 Formal qualification：
 
 ```text
 loomrealm.render-update / 1
 fixtureSetRevision = 1
-202 unique normative fixtures
-202 executable mappings
-266 role evidence records
+203 unique normative fixtures
+82 subsystem-sender obligations
+185 renderer-receiver obligations
+267 explicit (role, fixture) evidence pairs
+transport = 0
 ```
+
+Qualification audit 强制：
+
+```text
+expected
+= registered
+= executed
+= passed
+```
+
+Dual-role fixture 的 sender / receiver 使用独立 semantic proof；hard-limit matrix 对 exact / one-over / UTF-8 boundary 同时验证 outbound zero-send 与 inbound pre-commit protocol-fatal。
 
 Decision / review：
 
@@ -250,3 +266,4 @@ Renderer 后续 presentation 应通过既有 Content boundary 解析 logical res
 - [2026-09-03 — M6/M7](../../daily/2026-09/03/_index.md)
 - [2026-09-04 — M8/M9](../../daily/2026-09/04/_index.md)
 - [2026-09-07 — M10/M11](../../daily/2026-09/07/_index.md)
+- [2026-09-08 — M11 final requalification](../../daily/2026-09/08/_index.md)
