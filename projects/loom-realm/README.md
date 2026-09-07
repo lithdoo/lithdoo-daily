@@ -1,289 +1,231 @@
 # LoomRealm
 
-LoomRealm 是一个 platform-neutral logical Subsystem runtime architecture；Game Entry 只声明逻辑拓扑，matching Platform Launcher 完成当前平台的 executable PREPARE，Main 保持 Session / Runtime / Frame / Activation authority，具体 Platform Composition 负责物理承载。
+LoomRealm 是一个 platform-neutral logical Subsystem runtime architecture；Game Entry 只声明逻辑拓扑，matching Platform Launcher 完成当前平台 executable PREPARE，Main 保持 Session / Runtime / Frame / Stack / Activation / InputTarget / DataAuthority 的唯一公开 authority，具体 Platform Composition 负责物理承载。
 
 ## Current
 
-- Status: **M9 Desktop DataConnectionBroker — Architecture Frozen / Implemented / Qualified / Closed**
+- Status: **M11 Render Update — Architecture Frozen / Implemented / Qualified / Closed**
 - Source: https://github.com/lithdoo/loom-realm
-- Current `main` closure head: `7ba1b293db2dccd711bc8e19d85c4be47ea95ed8`
-- M9 implementation commit: `ee6857ac3c70625fb9893e52fc1a93569e744ae5`
-- M9 qualification record: https://github.com/lithdoo/loom-realm/blob/main/doc/30-implementation/m9-qualification.md
-- M9 freeze ADR: https://github.com/lithdoo/loom-realm/blob/main/doc/decisions/0028-freeze-m9-desktop-data-broker-preimplementation.md
-- Formal Data Connection contract: https://github.com/lithdoo/loom-realm/blob/main/doc/15-contracts/renderer-subsystem-data-connection-v1.md
-- Formal Renderer Data Profile: https://github.com/lithdoo/loom-realm/blob/main/doc/15-contracts/renderer-data-profile-v1.md
-- Next capability milestone: **M10 User Input**
+- Current closure head: `14bf414022a109174e6caed26f5e260dd59dffd9`
+- M10 qualification: https://github.com/lithdoo/loom-realm/blob/main/doc/30-implementation/m10-qualification.md
+- M11 qualification: https://github.com/lithdoo/loom-realm/blob/main/doc/30-implementation/m11-qualification.md
+- Next capability milestone: **M12 Content**
 
-M6 Hostra Runtime, M7 Renderer Control and M8 Renderer Data remain qualified baselines. M9 adds the first real Hostra/Desktop physical Data Connection behind the frozen M8 role Bindings.
+当前连续 qualified baseline：
 
-M9 does not yet add User Input business publication, Render business publication, Content, production same-key Runtime generation replacement, full Electron BrowserWindow composition or PWA Data equivalence.
+```text
+M6 Hostra Runtime             Closed
+M7 Renderer Control           Closed
+M8 Renderer Data Role/Core    Closed
+M9 Desktop Data Broker        Closed
+M10 User Input v1             Closed
+M11 Render Update v1          Closed
+```
 
-## Current architecture
+M12 之后继续 M13 `loom.map` → M14 Desktop full E2E → M15 PWA Runtime → M16 PWA full E2E/equivalence。
 
-The stable path through M9 is:
+## Stable architecture through M11
 
 ```text
 Game / Platform PREPARE
 → LogicalGameBootstrap
 → Main single authority
-   ├─ Runtime / Frame / Activation / InputTarget
-   ├─ current Renderer participant + authority revision
-   └─ ready-derived DataAuthority(S,1,"loomrealm.renderer-data/1")
+   ├─ Runtime / Frame / Stack / Activation
+   ├─ InputTarget
+   ├─ current Renderer participant
+   └─ DataAuthority(S,G,"loomrealm.renderer-data/1")
         │
-        ├─ Renderer-visible logical projection
-        │      ↓
-        │   Renderer Control Snapshot
-        │      ↓
-        │   @loomrealm/renderer
+        ├─ Renderer Control mirror
         │
-        └─ physical authority projection
-               ↓
-        DataConnectionAuthoritySink
-               ↓
-        DesktopDataConnectionBroker
-          Map<S, 0..1 pending + 0..1 current>
-               ↓
-        paired one-time loopback WebSockets
-          Renderer side ⇄ opaque relay ⇄ Hostra Runner side
-               ↓                         ↓
-        RendererDataBinding       SubsystemDataBinding
-               ↓                         ↓
-        RendererDataPeer         SubsystemDataPeer
-               └──────── @loomrealm/data ────────┘
+        └─ M9 physical Data lifecycle
+             ↓
+        current RendererDataPeer ⇄ SubsystemDataPeer
+             │                      │
+             │                      ├─ M10 Desired Input Interest
+             │                      └─ M11 authoritative Render publication
+             │
+             ├─ M10 Producer + Effective gate
+             └─ M11 internal Render replica
 ```
 
-The physical Data connection is now real on Hostra/Desktop, while Main remains the only logical authority.
+Authority ownership 不因 physical hosting 或 replica 改变：
+
+```text
+Main
+    Session / Runtime / Frame / Stack / Activation
+    InputTarget / DataAuthority
+
+Subsystem
+    business state
+    local Frame Context / mutation gate
+    Desired Input Interest + retained State
+    authoritative Render Domain state
+
+Renderer
+    read-only Main mirror
+    current Data consumer
+    Input Producer facts + sender enforcement
+    internal Render replica
+
+Platform
+    executable binding
+    Runtime / Renderer hosting
+    physical Control/Data provisioning
+    Content binding
+```
 
 ## Stable milestone baselines
 
-### M6 Hostra Runtime
+### M6 — Hostra Runtime
 
-M6 remains the physical Runtime baseline:
+Hostra PREPARE → LogicalGameBootstrap → Main RuntimeHosting → Node Runner → Runtime Control WebSocket → `@loomrealm/subsystem/host` 是稳定 physical Runtime baseline。
 
-```text
-Hostra Game installation
-→ @loomrealm/game-launcher-hostra PREPARE
-→ LogicalGameBootstrap + private HostraLaunchPlan
-→ Main RuntimeHosting
-→ Node Runner
-→ WebSocket Runtime Control
-→ @loomrealm/subsystem/host
-→ Frame outcome
-→ bounded physical termination
-```
+Decision / review：
 
-M9 extends Hostra with optional Data provisioning. The M6 Runtime-only path remains valid when the hook is absent.
+- [M6 Hostra launcher / RuntimeHosting boundary](./decisions/m6-hostra-launcher-runtime-boundary.md)
+- [M6 Hostra launcher qualified baseline](./reviews/m6-hostra-launcher-qualified-baseline.md)
 
-### M7 Renderer Control
+### M7 — Renderer Control
 
-M7 remains the parent authority transport for Renderer-facing state.
+Main owns current Renderer participant / authority；`@loomrealm/renderer-control` 只拥有 protocol mechanics 与 readonly projection，不产生第二份 authority。
 
-Main owns current Renderer participant and token authority. `@loomrealm/renderer-control` owns protocol mechanics only.
-
-M9 reuses the consumed current Renderer token as inert physical correlation; it does not add a second Renderer epoch/currentness protocol.
-
-Stable decision:
+Decision / review：
 
 - [M7 Renderer Control boundary](./decisions/m7-renderer-control-boundary.md)
+- [M7 Renderer Control qualified baseline](./reviews/m7-renderer-control-qualified-baseline.md)
 
-### M8 Renderer Data
+### M8 — Renderer Data Role/Core
 
-M8 remains the logical Data authority and role-peer baseline.
+M8 冻结 DataAuthority 与 role-facing Bindings；Binding 只 acquire 已经安装好的 current-deliverable carrier，不创建 candidate、不决定 authority。
 
-Current reachable Phase 1 authority is:
-
-```text
-Runtime != ready
-→ no DataAuthority
-
-Runtime = ready
-→ S/1/loomrealm.renderer-data/1
-```
-
-Role-facing seams remain unchanged:
-
-```ts
-RendererDataBinding.acquire(S, G, P, signal)
-SubsystemDataBinding.acquire(signal)
-```
-
-They mean “wait for an already-installed current-deliverable carrier”. They do not create candidates or decide authority.
-
-Stable decision:
+Decision / review：
 
 - [M8 Renderer Data / Data Connection boundary](./decisions/m8-renderer-data-boundary.md)
+- [M8 Renderer Data qualified baseline](./reviews/m8-renderer-data-qualified-baseline.md)
 
-## M9 stable boundaries
+### M9 — Desktop DataConnectionBroker
 
-### Main → Broker authority is a full immutable fact
+M9 将 M8 logical Data lifecycle 物理化到 Hostra/Desktop：paired one-time Data WebSockets、commit-time currentness revalidation、old→none→new cutover、bounded buffering、Data-only failure isolation。
 
-M9 adds one narrow Platform fact seam:
+Decision / review：
 
-```text
-DataConnectionAuthoritySink.replace(view | null)
-```
+- [M9 Desktop DataConnectionBroker boundary](./decisions/m9-desktop-data-broker-boundary.md)
+- [M9 Desktop DataConnectionBroker qualified baseline](./reviews/m9-desktop-data-broker-qualified-baseline.md)
 
-A non-null view contains:
+### M10 — User Input v1
 
-```text
-current Renderer correlation token
-entries[] = exact S/G/P + exact HostedRuntime reference
-```
-
-The sink is synchronous, non-blocking and non-throwing.
-
-Logical invalidation must happen before asynchronous physical cleanup.
-
-Main emits a fresh immutable view and does not expose candidate endpoint/ticket/provisioning state.
-
-### Exact existing identities are reused
-
-M9 deliberately avoids new identity infrastructure.
-
-Current physical identity uses:
+M10 在 current Data 上完成 deterministic User Input，保持三个独立 lifetime：
 
 ```text
-Session context
-current Renderer token
-exact HostedRuntime object reference
-S/G/P
-candidate ID for private physical attempt identity
+Desired Interest
+    Frame-scoped
+
+Input Lease
+    Activation-scoped (frameId, activationId)
+
+Wire Publication State
+    current Data carrier-scoped
 ```
 
-No `RuntimeInstanceId`, PID registry, Renderer epoch service or universal currentness lease is added.
-
-### Broker state is bounded per subsystem
-
-One Desktop session uses:
+核心边界：
 
 ```text
-Map<S, Slot>
-
-Slot {
-  current: 0..1
-  pending: 0..1
-}
+Main        InputTarget authority
+Subsystem   Desired Interest + retained current State + business delivery
+Renderer    Producer facts + Effective sender enforcement
+Platform    physical device/window/carrier only
 ```
 
-Formal current cardinality remains `(Session,current Renderer,S) → 0..1`.
+State 是 current/latest truth；Event future-only/no replay；Reset teardown Activation state。
 
-A second same-`S` pending request rejects. Runner never implicitly supersedes a prepared candidate; Broker explicitly revokes before preparing replacement.
+ADR 0029 的 mutation-gate rule：commit-sensitive mutation 时 same-Activation State retain latest 但 suppress delivery；explicit known-no-commit 且 same Activation reopen 时，先同步 State convergence，再向业务暴露 recoverable `frame.call` rejection。
 
-### Candidate is never current before paired install
-
-A candidate may establish both physical sides and wait prepared, but before installation:
+Formal qualification：
 
 ```text
-not current
-relay gate closed
-no role delivery
-no application traffic
+loomrealm.user-input / 1
+fixtureSetRevision = 2
+168 normative fixtures
+168 executable mappings
+303 role evidence records
 ```
 
-Commit-time installation revalidates exact latest Main authority.
+Decision / review：
 
-### Cutover is old→none→new
+- [M10 User Input boundary](./decisions/m10-user-input-boundary.md)
+- [M10 User Input qualified baseline](./reviews/m10-user-input-qualified-baseline.md)
 
-Serialized install order:
+### M11 — Render Update v1
+
+M11 在同一 current Data path 上完成 Subsystem authoritative Render publication → Renderer internal replica。
 
 ```text
-both sides prepared
-→ exact currentness revalidation
-→ old current retires
-→ B becomes sole logical current
-→ relay/Renderer delivery opens
-→ Runner post-install commit notification
-→ old physical cleanup
+Subsystem
+    Render Domain business authority
+    validate → detach → atomic commit
+    Snapshot-first publication
+
+Renderer
+    internal replica / existing Data slot identity
+    atomic Registry / Snapshot / Patch apply
+    transient Event delivery/drop
 ```
 
-There is never a legal two-current overlap.
+Sender v1 刻意使用 Frozen protocol 允许的 full-Snapshot fallback，不制造 diff/reconciler framework；Renderer Receiver 仍完整实现 Patch semantics。
 
-Runner `commit()` is post-install delivery, not 2PC. Failure after install retires B and never resurrects A.
+same-generation Data reconnect 时 business Domain 可继续存在，但旧 carrier publication/old Event history 不继承；fresh carrier 重新 Registry/Snapshot baseline。
 
-### Physical Data failure stays Data-only
-
-The following do not directly alter Runtime/Frame/Main DataAuthority:
+Formal qualification：
 
 ```text
-candidate connect failure
-provisioning rejection
-Data WS loss
-finite-buffer overflow
-Runner post-install commit failure
-provisioning IPC disconnect while Runtime remains alive
-same-generation physical replacement
+loomrealm.render-update / 1
+fixtureSetRevision = 1
+202 unique normative fixtures
+202 executable mappings
+266 role evidence records
 ```
 
-Actual child exit remains the existing RuntimeHosting failure fact.
+Decision / review：
 
-### Buffering is finite
+- [M11 Render Update boundary](./decisions/m11-render-update-boundary.md)
+- [M11 Render Update qualified baseline](./reviews/m11-render-update-qualified-baseline.md)
 
-No production Data physical path may accumulate unbounded application traffic while a reader is absent or delayed.
+## Evolution rule
+
+M6–M11 都是 qualified stopping points。后续 milestone 应消费这些边界，而不是为了统一框架重新打开它们。
+
+当前不应无真实 consumer 地增加：
 
 ```text
-pre-install overflow → dispose candidate
-post-install overflow → retire whole current pair
+ConnectionManager / ConnectionRegistry
+RuntimeDirectory / RuntimeInstanceId
+Renderer epoch service
+Generic Data/Input/Render framework
+Generic Store / Observable / EventBus
+InputDeviceRegistry
+Render reconciler / replication framework
+Generic Queue / Scheduler
+cross-plane ACK / shared revision / transaction
+retry / replay / resume framework
+PWA-shaped universal Broker abstraction
 ```
 
-Fresh replacement never replays or migrates old buffered units.
+M10 Input 与 M11 Render 可以共享 Renderer Data Profile / physical carrier，但仍保持独立 business semantics；没有 cross-child transaction、shared revision 或 ACK。
 
-The exact byte/message limit stays adapter-private.
+## Next
 
-### IPC flow control is not business currentness
+下一 capability milestone 是 **M12 Content**。
 
-Node `child.send() === false` may mean IPC flow-control backlog, so M9 does not interpret that boolean as send failure.
-
-Authoritative Host provisioning terminal facts are callback error, disconnect, exit, process error or synchronous send throw.
-
-Runner IPC disconnect terminalizes Data provisioning only and leaves Runtime Control independent.
-
-## M9 qualification baseline
-
-Qualification covers:
+M12 应继续遵守：
 
 ```text
-Main initial null and current-Renderer-only authority view
-immutable detached view + exact HostedRuntime identity
-Renderer replacement token update independent of Renderer revision
-one pending owner / one current owner per S
-pre-install traffic rejection
-paired physical readiness
-exact T/R/S/G/P commit revalidation
-old-current retirement before new-current installation
-successful proactive same-generation replacement
-post-install Runner commit failure with no old resurrection
-same-generation recovery after Data loss
-Renderer binding retirement/cleanup
-finite buffering and overflow retirement
-Host child.send(false) flow-control semantics
-Host send callback error terminality
-Runner IPC disconnect fail-close
-Data-only failure isolation
-real Hostra/Desktop production vertical
-no Data application handshake
+Content = readonly logical resource capability
+Subsystem author ContentClient mapping
+Renderer Resource/Content client mapping
+physical source/path remains Platform-private
 ```
 
-Primary implementation:
-
-```text
-ee6857ac3c70625fb9893e52fc1a93569e744ae5
-feat: implement M9 desktop data broker
-```
-
-Qualification closure:
-
-```text
-c97fab38c2aa1e5c0e913da849d04b0fbd756e62
-fix: close M9 qualification gaps
-
-14847b5e808ada722038a086dcf4c70645f5f0c4
-ci: build M9 dependencies in order
-
-7ba1b293db2dccd711bc8e19d85c4be47ea95ed8
-test: harden M9 IPC callback failure evidence
-```
-
-Dedicated `.github/workflows/m9.yml` runs `npm run test:m9` on pull requests and `main` pushes for Node 20 and Node 24. The final closure head passed both lines.
+Renderer 后续 presentation 应通过既有 Content boundary 解析 logical resource reference，不把 physical path/URL/bearer 塞进 Render payload。
 
 ## Important decisions
 
@@ -291,44 +233,20 @@ Dedicated `.github/workflows/m9.yml` runs `npm run test:m9` on pull requests and
 - [M7 Renderer Control boundary](./decisions/m7-renderer-control-boundary.md)
 - [M8 Renderer Data / Data Connection boundary](./decisions/m8-renderer-data-boundary.md)
 - [M9 Desktop DataConnectionBroker boundary](./decisions/m9-desktop-data-broker-boundary.md)
+- [M10 User Input boundary](./decisions/m10-user-input-boundary.md)
+- [M11 Render Update boundary](./decisions/m11-render-update-boundary.md)
 
 ## Reviews
 
-- [M6 Hostra launcher qualified baseline review](./reviews/m6-hostra-launcher-qualified-baseline.md)
-- [M7 Renderer Control qualified baseline review](./reviews/m7-renderer-control-qualified-baseline.md)
-- [M8 Renderer Data qualified baseline review](./reviews/m8-renderer-data-qualified-baseline.md)
-- [M9 Desktop DataConnectionBroker qualified baseline review](./reviews/m9-desktop-data-broker-qualified-baseline.md)
+- [M6 Hostra launcher qualified baseline](./reviews/m6-hostra-launcher-qualified-baseline.md)
+- [M7 Renderer Control qualified baseline](./reviews/m7-renderer-control-qualified-baseline.md)
+- [M8 Renderer Data qualified baseline](./reviews/m8-renderer-data-qualified-baseline.md)
+- [M9 Desktop DataConnectionBroker qualified baseline](./reviews/m9-desktop-data-broker-qualified-baseline.md)
+- [M10 User Input qualified baseline](./reviews/m10-user-input-qualified-baseline.md)
+- [M11 Render Update qualified baseline](./reviews/m11-render-update-qualified-baseline.md)
 
-## Evolution rule
+## Daily records
 
-M6–M9 are qualified stopping points and should not be reopened merely for symmetry or framework reuse.
-
-Do not add to the current M9 path without a real consumer requirement:
-
-```text
-ConnectionManager / ConnectionRegistry
-RuntimeDirectory / RuntimeInstanceId
-Renderer epoch/currentness service
-GenericDataBinding / UniversalConnection
-multi-pending candidate queue
-2PC / rollback framework
-retry/backoff scheduler
-BackpressureManager
-application flow-control handshake
-resume/replay cursor
-heartbeat / lease
-PWA-shaped universal Broker abstraction
-InputManager / RenderManager placeholders
-```
-
-The next work should enter M10 through the existing current Data peers:
-
-```text
-M8 logical DataAuthority + role peers
-        ↓
-M9 Hostra/Desktop physical Data Connection
-        ↓
-M10 User Input fresh publication baseline
-```
-
-M10 should add User Input business semantics without redefining Main DataAuthority ownership, M9 candidate/current lifecycle or the M8 role-facing Binding surface.
+- [2026-09-03 — M6/M7](../../daily/2026-09/03/_index.md)
+- [2026-09-04 — M8/M9](../../daily/2026-09/04/_index.md)
+- [2026-09-07 — M10/M11](../../daily/2026-09/07/_index.md)
