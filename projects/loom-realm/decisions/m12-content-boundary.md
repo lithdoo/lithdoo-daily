@@ -144,7 +144,7 @@ filesystem path
 FSDB handle
 ```
 
-若后续 M13 出现第一个真实 `group()` consumer，才允许 demand-driven 最小 reopen；不得用 raw HTTP/FSDB 绕过 author boundary。
+若后续 M14 `loom.map` 出现第一个真实 `group()` consumer，才允许 demand-driven 最小 reopen；不得用 raw HTTP/FSDB 绕过 author boundary。
 
 ## Renderer integration surface
 
@@ -165,7 +165,7 @@ namespace + ResourceKey + expectedContentVersion
 
 这是 trusted integration subpath，不是 business/application root surface。
 
-M12 不冻结 RenderNode/tag → resource reference schema；实际 presentation/resource mapping 属于 M14。
+M12 不冻结 RenderNode/tag → resource reference schema；实际 business presentation/resource mapping 属于 M14 `loom.map`。
 
 ## Credential boundary
 
@@ -223,12 +223,21 @@ transactional filesystem abstraction
 
 M12 已是 qualified stopping point。
 
+M13 Web Presentation 已进一步验证当前 Content logical identity/version 可以直接支撑：
+
+```text
+WebPresentationConfigV1 startup refs
+PresentationResourceClient expected-version reads
+```
+
+无需新增 AssetManager、Content authority 或 browser-specific Content schema。
+
 后续 milestone 应优先消费当前 boundary，而不是为了 symmetry 或未来猜测重开：
 
 ```text
-M13  验证真实 map business 对 author Content identity/surface 的自然性
-M14  验证真实 Desktop corpus / presentation / I/O economics
-M16  验证 Hostra/PWA logical Content equivalence
+M14  验证真实 map business 对 author Content identity/surface 的自然性
+M15  验证真实 Desktop corpus / presentation / I/O economics
+M17  验证 Hostra/PWA logical Content equivalence
 ```
 
 只有真实下游 evidence 证明当前 identity、lifetime、authority 或 portability boundary 无法成立时，才 reopen 对应 M12 semantic boundary。
