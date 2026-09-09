@@ -4,13 +4,14 @@ LoomRealm 是一个 platform-neutral logical Subsystem runtime architecture；Ga
 
 ## Current
 
-- Status: **M12 Content — Implemented / Qualified / Closed**
+- Status: **M13 Web Presentation — Implemented / Qualified / Closed**
 - Source: https://github.com/lithdoo/loom-realm
-- Current closure head: `0cc61e51c8458eb6da7a9e6d8ba6e4abc34aed03`
+- Current closure head: `ab0a1978c32a6ecba42980076fd2c63d85c8f0e4`
 - M10 qualification: https://github.com/lithdoo/loom-realm/blob/main/doc/30-implementation/m10-qualification.md
 - M11 qualification: https://github.com/lithdoo/loom-realm/blob/main/doc/30-implementation/m11-qualification.md
 - M12 qualification: https://github.com/lithdoo/loom-realm/blob/main/doc/30-implementation/m12-qualification.md
-- Next milestone: **M13 `loom.map`**
+- M13 qualification: https://github.com/lithdoo/loom-realm/blob/main/doc/30-implementation/m13-qualification.md
+- Next milestone: **M14 `loom.map`**
 
 当前连续 qualified baseline：
 
@@ -22,15 +23,16 @@ M9  Desktop Data Broker        Closed
 M10 User Input v1              Closed
 M11 Render Update v1           Closed
 M12 Readonly Content           Closed
+M13 Web Presentation           Closed
 ```
 
 后续 critical path：
 
 ```text
-M13 loom.map
-→ M14 Desktop full E2E
-→ M15 PWA Runtime
-→ M16 PWA full E2E / equivalence
+M14 loom.map
+→ M15 Desktop full E2E
+→ M16 PWA Runtime
+→ M17 PWA full E2E / equivalence
 ```
 
 ## Current architecture baseline
@@ -42,6 +44,25 @@ Game source
    ├─ LogicalGameBootstrap → Main
    ├─ executable LaunchPlan → RuntimeHosting / Runner
    └─ readonly Content projection → Platform Content service
+```
+
+Web Presentation 在此基础上形成独立 Window-level physical projection：
+
+```text
+Window composition
+→ WebPresentationConfigV1
+→ prepared Content refs
+→ ordered CSS / classic JS
+→ window.onload
+→ start presentation
+
+current Control Session/DataAuthority topology ─┐
+                                                ├→ per-subsystem eligibility
+matching RendererRenderStore facts ─────────────┘
+                                                        ↓
+                                                  Web Projector
+                                                        ↓
+                                           business-owned Custom Elements
 ```
 
 Authority remains：
@@ -64,15 +85,21 @@ Renderer
     Input Producer facts
     internal Render replica
     trusted resource-byte consumption
+    package-private thin Web projection mechanics
+
+Business Web Components
+    concrete presentation semantics
+    Shadow DOM / Canvas / WebGL / private presentation state
 
 Platform
     executable binding
     Runtime / Renderer hosting
     physical Control/Data provisioning
     Content service / storage binding / credential
+    physical Window / browser resource binding
 ```
 
-M12 没有新增 Main authority、universal Platform Port、Content service locator 或 generic storage framework。
+M13 没有新增 Main/Subsystem authority，也没有建立 PresentationStore、component registry/loader、AssetManager、layer framework 或 generic presentation package。
 
 ## Stable milestone decisions
 
@@ -83,6 +110,7 @@ M12 没有新增 Main authority、universal Platform Port、Content service loca
 - [M10 User Input boundary](./decisions/m10-user-input-boundary.md)
 - [M11 Render Update boundary](./decisions/m11-render-update-boundary.md)
 - [M12 Readonly Content boundary](./decisions/m12-content-boundary.md)
+- [M13 Web Presentation boundary](./decisions/m13-web-presentation-boundary.md)
 
 ## Qualified baseline reviews
 
@@ -93,6 +121,7 @@ M12 没有新增 Main authority、universal Platform Port、Content service loca
 - [M10 User Input qualified baseline](./reviews/m10-user-input-qualified-baseline.md)
 - [M11 Render Update qualified baseline](./reviews/m11-render-update-qualified-baseline.md)
 - [M12 Content qualified baseline](./reviews/m12-content-qualified-baseline.md)
+- [M13 Web Presentation qualified baseline](./reviews/m13-web-presentation-qualified-baseline.md)
 
 ## M12 stable summary
 
@@ -122,22 +151,41 @@ Business only depends on @loomrealm/subsystem
 Hostra/PWA share logical semantics, not storage mechanics
 ```
 
-没有预建：
+M13 已进一步证明 Content logical identity/version 可以作为 Web Presentation Config 与 PresentationResourceClient 的底层资源事实，而无需新增 AssetManager 或第二 Content authority。
+
+## M13 stable summary
+
+M13 将 browser presentation 收敛为现有 Renderer replica 的薄投影：
 
 ```text
-@loomrealm/content
-@loomrealm/content-service
-Repository / StorageProvider hierarchy
-InstallationRegistry service locator
-AssetManager
-Content credential RPC/profile
+Control topology + RendererRenderStore facts
+→ derived per-subsystem eligibility
+→ tag preflight
+→ Web Projector
+→ business-owned Custom Elements
 ```
 
-M12 canonical closure target 是 `npm run test:m12`，由 GitHub Actions 在 Node 20 / 24 持续执行。
+稳定原则：
+
+```text
+Control = Session/DataAuthority topology authority
+Store = Render replica authority
+DOM = physical projection only
+same-generation transport loss != authority removal
+full identity = Session + subsystem + generation + domain + key
+unknown tag = zero mutation + Window-local irreversible failure
+Window teardown bounds presentation resource capability
+```
+
+Business WC 只消费 structural `receiveRenderContext/receiveRenderData` ABI 与 narrow PresentationResourceClient；没有 mandatory presentation SDK/package。
+
+Production presentation 只读取 Store narrow `readPresentationFacts()`；qualification snapshot保持测试专用。
+
+M13 canonical closure target 是 `npm run test:m13`，由 GitHub Actions 在 Node 20 / 24 安装真实 Chromium并执行。
 
 ## Evolution rule
 
-M6–M12 都是 qualified stopping points。后续 milestone 应消费当前边界，而不是为了统一框架重新打开它们。
+M6–M13 都是 qualified stopping points。后续 milestone 应消费当前边界，而不是为了统一框架重新打开它们。
 
 当前不应无真实 consumer 地增加：
 
@@ -146,24 +194,32 @@ ConnectionManager / ConnectionRegistry
 RuntimeDirectory / RuntimeInstanceId
 Generic Data/Input/Render framework
 Generic Store / Observable / EventBus
-Render reconciler / replication framework
+PresentationStore / presentation SDK
+component registry / dynamic loader
+AssetManager / layer/layout framework
+DOM rollback / recovery framework
+speculative presentation scheduler
 Repository / StorageProvider abstraction
-Content Core / AssetManager framework
 PWA-shaped universal storage/broker abstraction
 retry / replay / resume framework
 ```
 
-真正可能重新验证 M12 的证据来自下游：
+真正可能重新验证已关闭边界的证据来自下游：
 
 ```text
-M13
-    Content identity / author surface 是否自然适合真实 map business
-
 M14
-    真实 Essentials corpus 下 Desktop Content PREPARE / read 的 I/O economics
+    real loom.map business 对 Frame/Input/Render/Content/M13 author ABI 的自然性
+    real map workload 下同步 projection 是否出现可测 frame pressure
+
+M15
+    real Desktop BrowserWindow / reload / shutdown / physical input composition
+    real Essentials corpus 下 Content / presentation I/O economics
 
 M16
-    不同 physical storage 下 Hostra / PWA logical Content equivalence
+    PWA Worker Runtime / physical hosting realization
+
+M17
+    Hostra / PWA logical Content + Web Presentation observable equivalence
 ```
 
 普通局部 conformance 或文档问题按 maintenance debt 处理，不自动升级成 architecture reopen。
@@ -174,7 +230,8 @@ M16
 - [2026-09-04 — M8/M9](../../daily/2026-09/04/_index.md)
 - [2026-09-07 — M10/M11](../../daily/2026-09/07/_index.md)
 - [2026-09-08 — M11 final requalification + M12 Content closure](../../daily/2026-09/08/_index.md)
+- [2026-09-09 — M13 Web Presentation closure](../../daily/2026-09/09/_index.md)
 
 ## Next
 
-进入 **M13 `loom.map`**：让第一个真实综合业务 Subsystem 只依赖 `@loomrealm/subsystem`，实际消费 Frame / Input / Render / Content，并用真实业务证据验证 M10–M12 frozen boundaries。
+进入 **M14 `loom.map`**：让第一个真实综合业务 Subsystem 消费 Frame / Input / Render / Content / Web Presentation，用真实业务证据验证 M10–M13 frozen boundaries。
