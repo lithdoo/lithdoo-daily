@@ -1,41 +1,87 @@
 # LoomRealm
 
-LoomRealm 是一个 platform-neutral logical Subsystem runtime architecture；Game Entry 只声明逻辑拓扑，matching Platform Launcher 完成当前平台 executable PREPARE，Main 保持 Session / Runtime / Frame / Stack / Activation / InputTarget / DataAuthority 的唯一公开 authority，具体 Platform Composition 负责物理承载。
+LoomRealm 是一个 platform-neutral logical Subsystem runtime architecture；Game Entry 声明逻辑拓扑，matching Platform Launcher 完成平台 executable PREPARE，Main 保持 Session / Runtime / Frame / Stack / Activation / InputTarget / DataAuthority 的唯一公开 authority，具体 Platform Composition 负责物理承载。
 
 ## Current
 
-- Status: **M13 Web Presentation — Implemented / Qualified / Closed**
+- Status: **M14 Map Game Library + First Real Game — implementation complete / exact-local PASS / hosted requalification pending**
 - Source: https://github.com/lithdoo/loom-realm
-- Current closure head: `ab0a1978c32a6ecba42980076fd2c63d85c8f0e4`
-- M10 qualification: https://github.com/lithdoo/loom-realm/blob/main/doc/30-implementation/m10-qualification.md
-- M11 qualification: https://github.com/lithdoo/loom-realm/blob/main/doc/30-implementation/m11-qualification.md
-- M12 qualification: https://github.com/lithdoo/loom-realm/blob/main/doc/30-implementation/m12-qualification.md
-- M13 qualification: https://github.com/lithdoo/loom-realm/blob/main/doc/30-implementation/m13-qualification.md
-- Next milestone: **M14 `loom.map`**
+- Current LoomRealm docs head: `ed05916be9b8968ff83ed2b0ed15bf9bdc031cb5`
+- Current M14 qualification subject: `5cec44829471f2e3419b46903ebee73f4114ebdf`
+- Formal live evidence: https://github.com/lithdoo/loom-realm/blob/main/doc/30-implementation/m14-qualification.md
+- Last formally closed milestone: **M13 Web Presentation**
+- Next action: hosted Node 20 / Node 24 `npm run test:m14` for the current qualification subject
+- Next implementation milestone after closure: **M15 Desktop Full E2E**
 
-当前连续 qualified baseline：
+Current milestone state：
 
 ```text
-M6  Hostra Runtime             Closed
-M7  Renderer Control           Closed
-M8  Renderer Data Role/Core    Closed
-M9  Desktop Data Broker        Closed
-M10 User Input v1              Closed
-M11 Render Update v1           Closed
-M12 Readonly Content           Closed
-M13 Web Presentation           Closed
+M6  Hostra Runtime                         Closed
+M7  Renderer Control                       Closed
+M8  Renderer Data Role/Core                Closed
+M9  Desktop Data Broker                    Closed
+M10 User Input v1                          Closed
+M11 Render Update v1                       Closed
+M12 Readonly Content                       Closed
+M13 Web Presentation                       Closed
+M14 Map Game Library + First Real Game     implementation complete / requalification pending
+M15 Desktop Full E2E                       pending
+M16 PWA Runtime                            pending
+M17 PWA Full E2E / equivalence             pending
 ```
 
-后续 critical path：
+M14 current evidence：
 
 ```text
-M14 loom.map
-→ M15 Desktop full E2E
-→ M16 PWA Runtime
-→ M17 PWA full E2E / equivalence
+architecture/contracts      frozen
+implementation              complete + hardened
+exact Essentials v21.1      PASS
+hosted Node 20              PENDING for subject 5cec448...
+hosted Node 24              PENDING for subject 5cec448...
+formal M14                  requalification pending
+```
+
+The last formally closed executable gate is：
+
+```text
+npm run test:m13
+```
+
+Current M14 hosted requalification gate is：
+
+```text
+npm run test:m14
 ```
 
 ## Current architecture baseline
+
+Primary repository/business dependency direction：
+
+```text
+examples
+    ↓
+game-libs
+    ↓
+public LoomRealm author APIs
+```
+
+Current first real game consumer：
+
+```text
+examples/essentials-v21.1
+    ↓
+@loomrealm-game/map
+    ↓
+@loomrealm/subsystem public author API
+    ↓
+Frame + Input + Content + Render
+    ↓
+M13 Web Presentation
+    ↓
+lr-map-view + lr-map-sprite
+```
+
+Platform/runtime authority remains：
 
 ```text
 Game source
@@ -46,60 +92,174 @@ Game source
    └─ readonly Content projection → Platform Content service
 ```
 
-Web Presentation 在此基础上形成独立 Window-level physical projection：
-
-```text
-Window composition
-→ WebPresentationConfigV1
-→ prepared Content refs
-→ ordered CSS / classic JS
-→ window.onload
-→ start presentation
-
-current Control Session/DataAuthority topology ─┐
-                                                ├→ per-subsystem eligibility
-matching RendererRenderStore facts ─────────────┘
-                                                        ↓
-                                                  Web Projector
-                                                        ↓
-                                           business-owned Custom Elements
-```
-
-Authority remains：
+Authority ownership：
 
 ```text
 Main
     Session / Runtime / Frame / Stack / Activation
     InputTarget / DataAuthority
 
-Subsystem
+Subsystem / Game Library Runtime
     business state
-    local Frame Context / mutation gate
-    Desired Input Interest + retained State
-    authoritative Render Domain state
+    Frame-bound Input Interest
+    authoritative RenderDomain state
     readonly ContentClient consumption
 
 Renderer
     read-only Main mirror
-    current Data consumer
-    Input Producer facts
-    internal Render replica
+    Data/Input/Render transport mechanics
+    current Render replica
     trusted resource-byte consumption
-    package-private thin Web projection mechanics
+    thin physical Web projection
 
 Business Web Components
-    concrete presentation semantics
-    Shadow DOM / Canvas / WebGL / private presentation state
+    presentation semantics
+    Shadow DOM / Canvas / private presentation state
 
 Platform
     executable binding
     Runtime / Renderer hosting
-    physical Control/Data provisioning
-    Content service / storage binding / credential
-    physical Window / browser resource binding
+    physical Control/Data/Content provisioning
+    Window / browser composition
 ```
 
-M13 没有新增 Main/Subsystem authority，也没有建立 PresentationStore、component registry/loader、AssetManager、layer framework 或 generic presentation package。
+M14 did not create another application authority or generic map framework。
+
+## M14 stable summary
+
+### Game Library boundary
+
+```text
+packages/      framework/runtime
+game-libs/     reusable game-domain libraries
+examples/      private concrete games
+apps/          physical platform hosts
+tools/         importer/dev/compatibility tooling
+```
+
+Map package：
+
+```text
+game-libs/map
+@loomrealm-game/map
+```
+
+Consumer seams：
+
+```text
+@loomrealm-game/map
+@loomrealm-game/map/browser/map.browser.js
+@loomrealm-game/map/browser/map.css
+```
+
+Runtime root imports only `@loomrealm/subsystem` public author APIs；browser artifact remains standalone classic browser code。
+
+### Selective Content model
+
+First-slice Runtime records only：
+
+```text
+Map/{id}:     tileset_id,width,height,data
+Tileset/{id}: id,tileset_name,passages,priorities
+```
+
+Projected RGSS Table：
+
+```text
+index(x,y,z)=x+y*xSize+z*xSize*ySize
+```
+
+No full RMXP TypeScript model / MapRepository / normalization framework。
+
+### Gameplay / presentation
+
+```text
+one long-lived gameplay Frame
+one Frame-bound keyboard.event listener
+one SDK-assigned opaque RenderDomain
+one synchronous tile movement attempt per non-repeat Arrow key down
+```
+
+Fixed first-slice logical presentation：
+
+```text
+32px tile
+640×480 CSS viewport
+20×15 nominal grid
+```
+
+Runtime owns camera/world-to-screen projection；DOM does not feed resize/layout state back to Runtime。
+
+Managed tree：
+
+```text
+lr-map-view
+└── lr-map-sprite
+```
+
+Map view owns private Canvas/tile resource decode/clipping；sprite owns character-sheet crop/placement。Full-state repaint clears the Canvas before drawing current `tiles[]`。
+
+### Exact v21.1 compatibility
+
+Current subject exact-local PASS uses：
+
+```text
+source fingerprint:
+sha256:da0a34ec81ed40a4346fe6101debd7d938cbeadd43ff0aad87c3e388392a1665
+
+map=1
+spawn=(10,8)
+character=trainer_POKEMONTRAINER_Red
+tileset=Poke Centre interior
+```
+
+The qualified local path now traverses both canonical seams：
+
+```text
+synthetic RendererInputSource
+→ Renderer Input Gate
+→ Data
+→ Subsystem InputManager
+→ Frame-bound InputListener
+→ map handler
+```
+
+and：
+
+```text
+local prepared FSDB
+→ Desktop FSDB HTTP service
+→ bound ContentClient
+→ map Runtime
+```
+
+Exact corpus editor placeholders with empty `tileset_name` are omitted only when unreferenced；referenced malformed entries remain fail-closed。
+
+## Qualification governance
+
+M14 implementation status and formal milestone closure are deliberately separate。
+
+`doc/30-implementation/m14-qualification.md` is the single live status/evidence authority。
+
+Qualification subject rule：
+
+```text
+last commit changing M14 executable behavior or qualification inputs
+= qualification subject
+```
+
+Therefore：
+
+```text
+docs-only evidence recording commit
+→ same subject
+
+Runtime/importer/browser/fixture/test/harness/workflow behavior change
+→ new subject
+→ requalification required
+```
+
+Historical Node 20/24 PASS for an older implementation remains historical evidence only and cannot close the current subject。
 
 ## Stable milestone decisions
 
@@ -111,8 +271,9 @@ M13 没有新增 Main/Subsystem authority，也没有建立 PresentationStore、
 - [M11 Render Update boundary](./decisions/m11-render-update-boundary.md)
 - [M12 Readonly Content boundary](./decisions/m12-content-boundary.md)
 - [M13 Web Presentation boundary](./decisions/m13-web-presentation-boundary.md)
+- [M14 Game Library / map consumer boundary](./decisions/m14-game-library-map-consumer-boundary.md)
 
-## Qualified baseline reviews
+## Baseline reviews
 
 - [M6 Hostra launcher qualified baseline](./reviews/m6-hostra-launcher-qualified-baseline.md)
 - [M7 Renderer Control qualified baseline](./reviews/m7-renderer-control-qualified-baseline.md)
@@ -122,72 +283,13 @@ M13 没有新增 Main/Subsystem authority，也没有建立 PresentationStore、
 - [M11 Render Update qualified baseline](./reviews/m11-render-update-qualified-baseline.md)
 - [M12 Content qualified baseline](./reviews/m12-content-qualified-baseline.md)
 - [M13 Web Presentation qualified baseline](./reviews/m13-web-presentation-qualified-baseline.md)
-
-## M12 stable summary
-
-M12 将 readonly Content 作为既有 architecture 上的窄 capability 实现：
-
-```text
-@loomrealm/fsdb
-    Node readonly FSDB domain core
-    ├─ @loomrealm/fsdb-http
-    └─ apps/desktop Content Service
-
-@loomrealm/subsystem
-    scope.content.record / resource
-
-@loomrealm/renderer/resource-client
-    trusted integration subpath
-    logical resource + expected version → bytes
-```
-
-稳定原则：
-
-```text
-Readonly Content != executable resolver
-one PREPARE truth → many narrow projections
-physical Content material remains Platform-private
-Business only depends on @loomrealm/subsystem
-Hostra/PWA share logical semantics, not storage mechanics
-```
-
-M13 已进一步证明 Content logical identity/version 可以作为 Web Presentation Config 与 PresentationResourceClient 的底层资源事实，而无需新增 AssetManager 或第二 Content authority。
-
-## M13 stable summary
-
-M13 将 browser presentation 收敛为现有 Renderer replica 的薄投影：
-
-```text
-Control topology + RendererRenderStore facts
-→ derived per-subsystem eligibility
-→ tag preflight
-→ Web Projector
-→ business-owned Custom Elements
-```
-
-稳定原则：
-
-```text
-Control = Session/DataAuthority topology authority
-Store = Render replica authority
-DOM = physical projection only
-same-generation transport loss != authority removal
-full identity = Session + subsystem + generation + domain + key
-unknown tag = zero mutation + Window-local irreversible failure
-Window teardown bounds presentation resource capability
-```
-
-Business WC 只消费 structural `receiveRenderContext/receiveRenderData` ABI 与 narrow PresentationResourceClient；没有 mandatory presentation SDK/package。
-
-Production presentation 只读取 Store narrow `readPresentationFacts()`；qualification snapshot保持测试专用。
-
-M13 canonical closure target 是 `npm run test:m13`，由 GitHub Actions 在 Node 20 / 24 安装真实 Chromium并执行。
+- [M14 implementation + requalification baseline](./reviews/m14-implementation-requalification-baseline.md)
 
 ## Evolution rule
 
-M6–M13 都是 qualified stopping points。后续 milestone 应消费当前边界，而不是为了统一框架重新打开它们。
+M6–M13 are formally qualified stopping points。M14 architecture/implementation is also a stable stopping point, but its formal closure label remains pending until current-subject hosted evidence lands。
 
-当前不应无真实 consumer 地增加：
+Do not add without downstream evidence：
 
 ```text
 ConnectionManager / ConnectionRegistry
@@ -195,34 +297,19 @@ RuntimeDirectory / RuntimeInstanceId
 Generic Data/Input/Render framework
 Generic Store / Observable / EventBus
 PresentationStore / presentation SDK
-component registry / dynamic loader
-AssetManager / layer/layout framework
-DOM rollback / recovery framework
-speculative presentation scheduler
+GameLibrary registry/base framework
+MapNormalizedV1 / MapRepository / MapManager
+AssetManager / ResourceProvider
+SceneGraph / LayerManager
+PlayerController / MovementManager
+responsive viewport service
+Tick / Scheduler / EventQueue
 Repository / StorageProvider abstraction
 PWA-shaped universal storage/broker abstraction
 retry / replay / resume framework
 ```
 
-真正可能重新验证已关闭边界的证据来自下游：
-
-```text
-M14
-    real loom.map business 对 Frame/Input/Render/Content/M13 author ABI 的自然性
-    real map workload 下同步 projection 是否出现可测 frame pressure
-
-M15
-    real Desktop BrowserWindow / reload / shutdown / physical input composition
-    real Essentials corpus 下 Content / presentation I/O economics
-
-M16
-    PWA Worker Runtime / physical hosting realization
-
-M17
-    Hostra / PWA logical Content + Web Presentation observable equivalence
-```
-
-普通局部 conformance 或文档问题按 maintenance debt 处理，不自动升级成 architecture reopen。
+The next real pressure test is M15 physical Desktop composition, not speculative cleanup of the already-working M14 logical consumer boundary。
 
 ## Daily records
 
@@ -231,7 +318,10 @@ M17
 - [2026-09-07 — M10/M11](../../daily/2026-09/07/_index.md)
 - [2026-09-08 — M11 final requalification + M12 Content closure](../../daily/2026-09/08/_index.md)
 - [2026-09-09 — M13 Web Presentation closure](../../daily/2026-09/09/_index.md)
+- [2026-09-10 — M14 map game implementation + requalification](../../daily/2026-09/10/_index.md)
 
 ## Next
 
-进入 **M14 `loom.map`**：让第一个真实综合业务 Subsystem 消费 Frame / Input / Render / Content / Web Presentation，用真实业务证据验证 M10–M13 frozen boundaries。
+1. Qualify subject `5cec44829471f2e3419b46903ebee73f4114ebdf` with hosted Node 20 and Node 24 `npm run test:m14`.
+2. Record the run evidence and restore formal M14 status to `Closed` if both pass.
+3. Enter M15 real Desktop Full E2E using the same M14 game/map Runtime and Web Components without reopening M10–M14 logical/business contracts.
