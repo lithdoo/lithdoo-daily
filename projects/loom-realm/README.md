@@ -4,14 +4,14 @@ LoomRealm 是一个 platform-neutral logical Subsystem runtime architecture；Ga
 
 ## Current
 
-- Status: **M14 Map Game Library + First Real Game — implementation complete / exact-local PASS / hosted requalification pending**
 - Source: https://github.com/lithdoo/loom-realm
-- Current LoomRealm docs head: `ed05916be9b8968ff83ed2b0ed15bf9bdc031cb5`
-- Current M14 qualification subject: `5cec44829471f2e3419b46903ebee73f4114ebdf`
-- Formal live evidence: https://github.com/lithdoo/loom-realm/blob/main/doc/30-implementation/m14-qualification.md
+- Current main head: `37e8603908f4224ac97d7d53879343dc846231fc`
+- Map: **RPGMap v1 delivered on main** via `f66d1cf43918f455b56259c0e2e5aa3defc1fe5d`; Windows launcher CRLF follow-up `bff953e862f2555e908d0b7776d32f901042007e`.
+- Battle: **v0 Core gameplay rules frozen / design-only / Runtime not implemented**. Normative docs are split into SPEC / CONTRACTS / INTEGRATION / TEST_MATRIX.
+- Formal M14 live evidence: https://github.com/lithdoo/loom-realm/blob/main/doc/30-implementation/m14-qualification.md
+- M14 ledger status: **Requalification Pending**. The ledger-recorded subject `c642cda9cee2b318b3aa8f6285de05d6b6ed6bea` predates current main and must not be treated as qualification for `37e8603`.
 - Last formally closed milestone: **M13 Web Presentation**
-- Next action: hosted Node 20 / Node 24 `npm run test:m14` for the current qualification subject
-- Next implementation milestone after closure: **M15 Desktop Full E2E**
+- Current project snapshot: [2026-09-26](./notes/progress-2026-09-26.md)
 
 Current milestone state：
 
@@ -30,16 +30,20 @@ M16 PWA Runtime                            pending
 M17 PWA Full E2E / equivalence             pending
 ```
 
-M14 current evidence：
+M14 formal ledger evidence（注意：ledger subject 早于当前 main）：
 
 ```text
 architecture/contracts      frozen
 implementation              complete + hardened
-exact Essentials v21.1      PASS
-hosted Node 20              PENDING for subject 5cec448...
-hosted Node 24              PENDING for subject 5cec448...
-formal M14                  requalification pending
+ledger subject              c642cda9cee2b318b3aa8f6285de05d6b6ed6bea
+local map/M14 slices        PASS on ledger subject
+exact Essentials v21.1      FAIL — stale qualification assertion in ledger
+hosted Node 20              PENDING
+hosted Node 24              PENDING
+formal M14                  Requalification Pending
 ```
+
+RPGMap v1 的 `f66d1cf` 是后续产品实现交付；是否形成新的正式 M14 qualification 必须由 ledger 更新到精确 executable subject 后另行判断。
 
 The last formally closed executable gate is：
 
@@ -199,9 +203,9 @@ lr-map-view
 
 Map view owns private Canvas/tile resource decode/clipping；sprite owns character-sheet crop/placement。Full-state repaint clears the Canvas before drawing current `tiles[]`。
 
-### Exact v21.1 compatibility
+### Historical exact v21.1 compatibility baseline
 
-Current subject exact-local PASS uses：
+以下是较早 subject 的 exact-local PASS 基线，用于保留兼容证据；**不是当前 main 的正式 qualification 结论**：
 
 ```text
 source fingerprint:
@@ -319,9 +323,12 @@ The next real pressure test is M15 physical Desktop composition, not speculative
 - [2026-09-08 — M11 final requalification + M12 Content closure](../../daily/2026-09/08/_index.md)
 - [2026-09-09 — M13 Web Presentation closure](../../daily/2026-09/09/_index.md)
 - [2026-09-10 — M14 map game implementation + requalification](../../daily/2026-09/10/_index.md)
+- [2026-09-21 — RPGMap 通用化设计与提交核查](../../daily/2026-09/21/_index.md)
+- [2026-09-26 — RPGMap v1 交付 + Battle v0 规范收敛](../../daily/2026-09/26/_index.md)
 
 ## Next
 
-1. Qualify subject `5cec44829471f2e3419b46903ebee73f4114ebdf` with hosted Node 20 and Node 24 `npm run test:m14`.
-2. Record the run evidence and restore formal M14 status to `Closed` if both pass.
-3. Enter M15 real Desktop Full E2E using the same M14 game/map Runtime and Web Components without reopening M10–M14 logical/business contracts.
+1. **M14 qualification**：先把正式 ledger 与当前 executable subject 对齐，再按同一 subject 记录 exact-local / hosted Node 20 / Node 24 证据；不要继承旧 subject 的 PASS。
+2. **Battle v0**：正式化 Content/Contracts Schema，随后实现 validator、headless Simulation reducer、Mock/Script Decision 和 deterministic Test Matrix。
+3. **Presentation / LLM / Host**：Core reducer 稳定后再接 Battle Presentation、真实 LLM Decision Adapter、Guidance / Host E2E。
+4. **M15/M16/M17**：继续以路线图和真实跨平台 E2E 为准，不用 Battle design 文档改变既有 milestone qualification 状态。
